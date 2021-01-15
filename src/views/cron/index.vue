@@ -31,7 +31,7 @@
     </el-dialog>
     <el-table
       v-loading="listLoading"
-      :data="listFitler"
+      :data="listFilter"
       element-loading-text="Loading"
       border
       fit
@@ -115,8 +115,8 @@ export default {
       DIE: 'DIE',
       list: [],
       listLoading: true,
-      rule: '.+',
-      rules: new Set(['.+']),
+      rule: '.*',
+      rules: new Set(['.*']),
       server: '',
       servers: [],
       dialogTableVisible: false,
@@ -126,15 +126,16 @@ export default {
     }
   },
   computed: {
-    listFitler: function() {
-      if (this.clients) {
-        console.log()
-        return this.clients[this.server]
+    listFilter: function() {
+      if (this.clients && this.server) {
+        const re = new RegExp(this.rule)
+        return this.clients[this.server].filter((item) => {
+          return re.test(item.group)
+        })
       } else {
-        return null
+        return []
       }
     }
-
   },
   mounted() {
     if (localStorage.rules && localStorage.rules !== '{}') {
@@ -155,12 +156,11 @@ export default {
       this.listLoading = true
       const params = {}
       list(params).then(response => {
+        this.clients = response.data
         this.servers = Object.keys(response.data)
         if (this.servers.length) {
           this.server = this.servers[0]
         }
-
-        this.clients = response.data
         this.listLoading = false
       })
     },
@@ -196,6 +196,7 @@ export default {
         id: id
       }
       remove(params).then(response => {
+        // this.clients.
         // this.$set(this.list, idx, response.data)
         this.listLoading = false
         this.$message('removed: ' + id)
@@ -212,7 +213,7 @@ export default {
       this.rules.delete(this.rule)
       this.rules = new Set(Array.from(this.rules))
       localStorage.rules = JSON.stringify(Array.from(this.rules))
-      this.rule = '.+'
+      this.rule = '.*'
       localStorage.rule = this.rule
       this.server = this.servers[0]
       localStorage.server = this.servers[0]

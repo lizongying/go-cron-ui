@@ -44,10 +44,10 @@ export const constantRoutes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/dashboard',
+    redirect: '/cron',
     children: [{
-      path: 'dashboard',
-      name: 'Cron',
+      path: 'cron',
+      name: 'Dashboard',
       component: () => import('@/views/cron/index'),
       meta: { title: 'Cron', icon: 'dashboard' }
     }]

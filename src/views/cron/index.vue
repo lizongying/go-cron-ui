@@ -22,7 +22,9 @@
       :show-close="true"
       :before-close="dialogCancel"
     >
-      <pre style="white-space: pre-wrap; word-wrap: break-word; color: rgb(191, 203, 217); background-color: rgb(48, 65, 86);">
+      <pre
+        style="white-space: pre-wrap; word-wrap: break-word; color: rgb(191, 203, 217); background-color: rgb(48, 65, 86);"
+      >
         {{ dialogContent }}
       </pre>
       <div slot="footer" class="dialog-footer">
@@ -43,7 +45,7 @@
           {{ scope.$index }}
         </template>
       </el-table-column>
-      <el-table-column prop="id" sortable label="JobID">
+      <el-table-column prop="id" sortable label="TaskID">
         <template slot-scope="scope">
           {{ scope.row.id }}
         </template>
@@ -80,9 +82,14 @@
           {{ scope.row.next }}
         </template>
       </el-table-column>
-      <el-table-column prop="state" sortable label="State" width="120" align="center">
+      <el-table-column prop="state" sortable label="JobState" width="120" align="center">
         <template slot-scope="scope">
           <el-tag :type="scope.row.state | statusFilter">{{ scope.row.state }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="enable" sortable label="Enable" width="120" align="center">
+        <template slot-scope="scope">
+          <el-tag class="operation" :type="scope.row.enable | statusFilter" @click="enable(scope.row.enable, scope.row.id)">{{ scope.row.enable }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="Operation" width="200" align="center" fixed="right">
@@ -95,15 +102,14 @@
 </template>
 
 <script>
-import { list, add, remove } from '@/api/cron'
+import { add, list, remove, stop, start } from '@/api/cron'
 
 export default {
   filters: {
     statusFilter(status) {
       const statusMap = {
         RUN: 'success',
-        DEF: 'gray',
-        DIE: 'danger'
+        DEF: 'danger'
       }
       return statusMap[status]
     }
@@ -112,7 +118,6 @@ export default {
     return {
       RUN: 'RUN',
       DEF: 'DEF',
-      DIE: 'DIE',
       list: [],
       listLoading: true,
       rule: '.*',
@@ -196,11 +201,44 @@ export default {
         id: id
       }
       remove(params).then(response => {
-        // this.clients.
-        // this.$set(this.list, idx, response.data)
+        this.clients[this.server] = this.clients[this.server].filter((i) => {
+          return i.id !== id
+        }
+        )
         this.listLoading = false
         this.$message('removed: ' + id)
       })
+    },
+    enable(e, id) {
+      this.listLoading = true
+      const params = {
+        id: id
+      }
+      if (e) {
+        stop(params).then(response => {
+          this.clients[this.server] = this.clients[this.server].map((i, idx) => {
+            if (i.id === id) {
+              i.enable = false
+            }
+            return i
+          }
+          )
+          this.listLoading = false
+          this.$message('stopped: ' + id)
+        })
+      } else {
+        start(params).then(response => {
+          this.clients[this.server] = this.clients[this.server].map((i) => {
+            if (i.id === id) {
+              i.enable = true
+            }
+            return i
+          }
+          )
+          this.listLoading = false
+          this.$message('started: ' + id)
+        })
+      }
     },
     onSave: function() {
       this.rules.add(this.rule)
@@ -225,7 +263,7 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
-  .operation {
-    cursor: pointer;
-  }
+.operation {
+  cursor: pointer;
+}
 </style>

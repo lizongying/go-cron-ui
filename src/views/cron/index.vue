@@ -13,6 +13,7 @@
         </div>
         <el-button type="primary" @click="onSave">Save filter</el-button>
         <el-button @click="onDelete">Delete filter</el-button>
+        <el-button type="primary" style="float: right" @click="dialogAdd">Add</el-button>
       </el-form-item>
     </el-form>
     <el-dialog
@@ -22,13 +23,26 @@
       :show-close="true"
       :before-close="dialogCancel"
     >
-      <pre
-        style="white-space: pre-wrap; word-wrap: break-word; color: rgb(191, 203, 217); background-color: rgb(48, 65, 86);"
-      >
-        {{ dialogContent }}
-      </pre>
+      <el-form ref="form" :model="form" :rules="rulesForm">
+        <el-form-item label="Script" prop="script" :label-width="formLabelWidth">
+          <el-input v-model="form.script" type="textarea" :style="inputWidth" placeholder="Script" />
+        </el-form-item>
+        <el-form-item label="Dir" prop="dir" :label-width="formLabelWidth">
+          <el-input v-model="form.dir" :style="inputWidth" placeholder="Dir" />
+        </el-form-item>
+        <el-form-item label="Spec" prop="spec" :label-width="formLabelWidth">
+          <el-input v-model="form.spec" :style="inputWidth" placeholder="Spec" />
+        </el-form-item>
+        <el-form-item label="Group" prop="group" :label-width="formLabelWidth">
+          <el-input v-model="form.group" :style="inputWidth" placeholder="Group" />
+        </el-form-item>
+        <el-form-item label="Enable" prop="enable" :label-width="formLabelWidth">
+          <el-switch v-model="form.enable" :style="inputWidth" />
+        </el-form-item>
+      </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogCancel">Cancel</el-button>
+        <el-button type="primary" @click="dialogSure">Save</el-button>
       </div>
     </el-dialog>
     <el-table
@@ -94,7 +108,8 @@
       </el-table-column>
       <el-table-column label="Operation" width="200" align="center" fixed="right">
         <template slot-scope="scope">
-          <el-tag class="operation" type="blue" @click="remove(scope.row.id)">REMOVE</el-tag>
+          <el-tag class="operation" type="blue" @click="remove(scope.row.id)">Remove</el-tag>
+          <el-tag type="blue" class="operation" @click="dialogUpdate(scope.row.id)">Edit</el-tag>
         </template>
       </el-table-column>
     </el-table>
@@ -124,10 +139,29 @@ export default {
       rules: new Set(['.*']),
       server: '',
       servers: [],
+      formLabelWidth: '100px',
+      inputWidth: 'width:100%;',
       dialogTableVisible: false,
       dialogTitle: '',
       dialogContent: '',
-      clients: {}
+      form: {
+        id: '',
+        script: '',
+        dir: '',
+        spec: '',
+        group: '',
+        enable: true
+      },
+      rulesForm: {
+        script: [
+          { required: true, message: 'Script is empty', trigger: 'blur' }
+        ],
+        spec: [
+          { required: true, message: 'Spec is empty', trigger: 'blur' }
+        ]
+      },
+      clients: {},
+      ids: []
     }
   },
   computed: {
@@ -183,18 +217,6 @@ export default {
         this.$message(this.list[idx].group + ' fresh!')
       })
     },
-    addcmd(id) {
-      this.listLoading = true
-      const params = {
-        id: id
-      }
-      add(params).then(response => {
-        // response.data.idx = idx
-        // this.$set(this.list, idx, response.data)
-        // this.listLoading = false
-        // this.$message(this.list[idx].group + ' fresh!')
-      })
-    },
     remove(id) {
       this.listLoading = true
       const params = {
@@ -216,7 +238,7 @@ export default {
       }
       if (e) {
         stop(params).then(response => {
-          this.clients[this.server] = this.clients[this.server].map((i, idx) => {
+          this.clients[this.server] = this.clients[this.server].map((i) => {
             if (i.id === id) {
               i.enable = false
             }
@@ -258,6 +280,91 @@ export default {
     },
     dialogCancel: function() {
       this.dialogTableVisible = false
+    },
+    dialogAdd: function() {
+      this.form = {
+        id: '',
+        script: '',
+        dir: '',
+        spec: '',
+        group: '',
+        enable: true
+      }
+      this.dialogTitle = 'Add'
+      this.dialogTableVisible = true
+    },
+    dialogUpdate: function(id) {
+      this.clients[this.server].every((i) => {
+        if (i.id === id) {
+          this.form = {
+            id: i.id,
+            script: i.script,
+            dir: i.dir,
+            spec: i.spec,
+            group: i.group,
+            enable: i.enable
+          }
+          return false
+        }
+        return true
+      })
+
+      this.dialogTitle = 'Edit'
+      this.dialogTableVisible = true
+    },
+    dialogSure: function() {
+      this.$refs['form'].validate((valid) => {
+        if (valid) {
+          this.listLoading = true
+          const params = this.form
+          if (!this.form.id) {
+            params.id = 3
+            add(params).then(response => {
+              this.listLoading = false
+              if (response.code === 0) {
+                this.clients[this.server].push({
+                  id: params.id,
+                  script: params.script,
+                  dir: params.dir,
+                  spec: params.spec,
+                  group: params.group,
+                  prev: '0000-00-00 00:00:00',
+                  next: '0000-00-00 00:00:00',
+                  state: 'DEF',
+                  enable: params.enable
+                })
+                this.$message('Success')
+              } else {
+                this.$message('Error')
+              }
+              this.dialogTableVisible = false
+            })
+          } else {
+            add(params).then(response => {
+              this.listLoading = false
+              if (response.code === 0) {
+                this.clients[this.server] = this.clients[this.server].map((i) => {
+                  if (i.id === params.id) {
+                    i.script = params.script
+                    i.dir = params.dir
+                    i.spec = params.spec
+                    i.group = params.group
+                    i.prev = params.prev
+                    i.next = params.next
+                    i.state = params.state
+                    i.enable = params.enable
+                  }
+                  return i
+                })
+                this.$message('Success')
+              } else {
+                this.$message('Error')
+              }
+              this.dialogTableVisible = false
+            })
+          }
+        }
+      })
     }
   }
 }

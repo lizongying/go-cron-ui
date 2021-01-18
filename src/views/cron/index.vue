@@ -166,7 +166,7 @@ export default {
   },
   computed: {
     listFilter: function() {
-      if (this.clients && this.server) {
+      if (this.clients && this.server && this.clients[this.server]) {
         const re = new RegExp(this.rule)
         return this.clients[this.server].filter((item) => {
           return re.test(item.group)
